@@ -1,8 +1,5 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
-ultralytics-opencv-headless
-fastapi
-python-multipart
-opencv-python-headless<5
-numpy
+ultralytics
+opencv-python-headless
