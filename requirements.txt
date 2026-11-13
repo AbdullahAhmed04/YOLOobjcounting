@@ -3,3 +3,7 @@ torch
 torchvision
 ultralytics
 opencv-python-headless
+numpy
+fastapi
+uvicorn
+python-multipart
