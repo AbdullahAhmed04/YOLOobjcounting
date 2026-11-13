@@ -1,7 +1,0 @@
-ultralytics
-fastapi
-uvicorn
-python-multipart
-pyngrok
-opencv-python-headless
-numpy
