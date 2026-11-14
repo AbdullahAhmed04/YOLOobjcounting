@@ -58,27 +58,39 @@ select option{background:#0d0420}
 .chips{display:flex;gap:6px;margin:8px 0;flex:none}
 .chip{border:1px solid rgba(255,255,255,.18);background:#000;border-radius:999px;padding:3px 11px;font-size:12px;cursor:pointer;transition:.2s;color:#fff}
 .chip:hover{background:#1a1a1a;border-color:rgba(255,255,255,.4)}
-#classList{flex:1;min-height:44px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px;background:rgba(0,0,0,.3)}
-.cls{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:13px;cursor:pointer;border-radius:6px;transition:.15s}
+#classList{flex:1;min-height:70px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px;background:rgba(0,0,0,.3)}
+.cls{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:13px;cursor:pointer;border-radius:6px;transition:.15s;min-width:0}
+.cls span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccols{column-width:132px;column-gap:6px}
+.ccols .cls{break-inside:avoid}
 .cls:hover{background:rgba(255,255,255,.07)}
 .cls input{accent-color:var(--acc)}
 .cfind{display:flex;gap:6px;align-items:center;margin:6px 0 4px;flex:none}
 .cfind .chips{margin:0}
 .cfind input[type=text]{flex:1;min-width:0;padding:4px 10px;font-size:12px;border-radius:999px}
-.ctabs{display:flex;gap:6px;overflow-x:auto;flex:none;margin-bottom:6px;scrollbar-width:none;overscroll-behavior-x:contain}
+.ctabwrap{position:relative;flex:none;margin-bottom:6px}
+.ctabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+.carrow{position:absolute;top:0;bottom:0;width:26px;display:grid;place-items:center;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:#000;color:#fff;cursor:pointer;box-shadow:0 0 8px 4px rgba(0,0,0,.55);transition:background .2s,border-color .2s;z-index:2}
+.carrow[hidden]{display:none}
+.carrow.l{left:0}
+.carrow.r{right:0}
+.carrow:hover{background:#1a1a1a;border-color:rgba(255,255,255,.55)}
+.carrow:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.carrow svg{width:12px;height:12px;stroke:currentColor}
 .ctabs::-webkit-scrollbar{display:none}
 .ctab{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);background:#000;color:#fff;border-radius:999px;padding:3px 11px;font-size:12px;cursor:pointer;white-space:nowrap;transition:.2s;font-family:inherit}
 .ctab:hover{background:#1a1a1a;border-color:rgba(255,255,255,.4)}
 .ctab.on{border-color:var(--acc);background:rgba(167,139,250,.2)}
 .ctab:focus-visible,.chip:focus-visible,.clink:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
 .ctab .n{min-width:16px;padding:0 5px;border-radius:999px;background:var(--acc);color:#000;font-size:10px;font-weight:700;line-height:16px;text-align:center}
-.cpin{position:sticky;top:-4px;z-index:1;margin:-4px -4px 2px;padding:2px 12px;background:#12062a;border-bottom:1px solid var(--line);border-radius:8px 8px 0 0}
-.cpin .cls{padding-left:0;font-weight:600}
 .chead{display:flex;justify-content:space-between;align-items:center;padding:2px 8px;font-size:11px;color:var(--muted)}
 .clink{background:none;border:0;padding:0;margin-left:10px;font:inherit;color:var(--acc2);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .clink:hover{color:#fff}
 .cempty{padding:14px 8px;font-size:12px;color:var(--muted);text-align:center}
 .ctl{flex:none;margin-top:12px}
+.ctl.inline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.ctl.inline .lbl{margin:0;white-space:nowrap}
+.ctl.inline select{flex:1;width:auto;min-width:0;padding:5px 8px;font-size:12px}
 input[type=range]{width:100%;accent-color:var(--acc2);margin:2px 0}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
 .row b{color:var(--acc2);font-size:13px}
@@ -211,7 +223,11 @@ svg{fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
           <div class="chip" role="button" tabindex="0" onclick="selCommon()">Common</div>
         </div>
       </div>
-      <div class="ctabs" id="classTabs" role="tablist" aria-label="Class categories"></div>
+      <div class="ctabwrap">
+        <button type="button" class="carrow l" id="tabLeft" aria-label="Show previous categories" hidden><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <div class="ctabs" id="classTabs" role="tablist" aria-label="Class categories"></div>
+        <button type="button" class="carrow r" id="tabRight" aria-label="Show more categories" hidden><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
       <div id="classList"></div>
 
       <div class="ctl">
@@ -220,12 +236,12 @@ svg{fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
         <div class="row"><span>High Precision (0.95)</span><span>High Recall (0.05)</span></div>
       </div>
 
-      <div class="ctl">
+      <div class="ctl inline">
         <div class="lbl">Inference Image Size</div>
-        <select id="imgsz">
-          <option value="640">640px (Default - Balanced)</option>
-          <option value="960">960px (Medium Details)</option>
-          <option value="1280">1280px (Fine Details - High Resolution)</option>
+        <select id="imgsz" aria-label="Inference image size">
+          <option value="640">640px (Balanced)</option>
+          <option value="960">960px (Medium detail)</option>
+          <option value="1280">1280px (Fine detail)</option>
         </select>
       </div>
 
@@ -372,7 +388,8 @@ function visibleClasses() {
   const match = c => !q || c.toLowerCase().includes(q);
   let list;
   if (classTab === 'All') {
-    list = classGroups.categories.flatMap(c => c.classes).sort(byName);
+    // pinned classes (person) come first, everything else A-Z; they scroll like any other option
+    list = [...classGroups.pinned, ...classGroups.categories.flatMap(c => c.classes).sort(byName)];
   } else {
     const cat = classGroups.categories.find(c => c.name === classTab);
     list = cat ? cat.classes : [];
@@ -381,16 +398,34 @@ function visibleClasses() {
 }
 
 function classRow(c) {
-  return `<label class="cls"><input type="checkbox" name="classCheckbox" value="${esc(c)}" ${chosen.has(c) ? 'checked' : ''}><span>${esc(c)}</span></label>`;
+  return `<label class="cls" title="${esc(c)}"><input type="checkbox" name="classCheckbox" value="${esc(c)}" ${chosen.has(c) ? 'checked' : ''}><span>${esc(c)}</span></label>`;
 }
 
 function renderTabs() {
   const tabs = [{name: 'All', classes: allGroupedClasses()}, ...classGroups.categories];
-  document.getElementById('classTabs').innerHTML = tabs.map(t => {
+  const strip = document.getElementById('classTabs');
+  const keep = strip.scrollLeft;
+  strip.innerHTML = tabs.map(t => {
     const n = t.classes.filter(c => chosen.has(c)).length;
     const on = t.name === classTab;
     return `<button type="button" class="ctab${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-tab="${esc(t.name)}">${esc(t.name)}${n ? `<span class="n">${n}</span>` : ''}</button>`;
   }).join('');
+  strip.scrollLeft = keep;
+  updateTabArrows();
+}
+
+// show each arrow only when there are more tabs to reach in that direction
+function updateTabArrows() {
+  const strip = document.getElementById('classTabs');
+  const max = strip.scrollWidth - strip.clientWidth;
+  document.getElementById('tabLeft').hidden = strip.scrollLeft <= 1;
+  document.getElementById('tabRight').hidden = max <= 1 || strip.scrollLeft >= max - 1;
+}
+
+function scrollTabs(dir) {
+  const strip = document.getElementById('classTabs');
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  strip.scrollBy({left: dir * Math.max(120, strip.clientWidth * 0.6), behavior: calm ? 'auto' : 'smooth'});
 }
 
 function renderSelCount() {
@@ -399,17 +434,12 @@ function renderSelCount() {
 }
 
 function renderClassList() {
-  const q = classQuery.trim().toLowerCase();
   const shown = visibleClasses();
-  const pinned = classGroups.pinned.filter(c => !q || c.toLowerCase().includes(q));
   let html = '';
-  if (pinned.length) {
-    html += `<div class="cpin">${pinned.map(classRow).join('')}</div>`;
-  }
   if (shown.length) {
     html += `<div class="chead"><span>${shown.length} shown</span><span><button type="button" class="clink" data-act="pick">Select all</button><button type="button" class="clink" data-act="clear">Clear</button></span></div>`;
-    html += shown.map(classRow).join('');
-  } else if (!pinned.length) {
+    html += `<div class="ccols">${shown.map(classRow).join('')}</div>`;
+  } else {
     html += '<div class="cempty">No classes match your search.</div>';
   }
   document.getElementById('classList').innerHTML = html;
@@ -471,6 +501,11 @@ classTabsEl.addEventListener('wheel', e => {
   e.preventDefault();
   classTabsEl.scrollLeft += e.deltaY;
 }, {passive: false});
+
+document.getElementById('tabLeft').addEventListener('click', () => scrollTabs(-1));
+document.getElementById('tabRight').addEventListener('click', () => scrollTabs(1));
+classTabsEl.addEventListener('scroll', updateTabArrows, {passive: true});
+window.addEventListener('resize', updateTabArrows);
 
 document.getElementById('classSearch').addEventListener('input', e => {
   classQuery = e.target.value;
