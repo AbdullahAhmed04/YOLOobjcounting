@@ -62,6 +62,21 @@ select option{background:#0d0420}
 .cls{display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:13px;cursor:pointer;border-radius:6px;transition:.15s}
 .cls:hover{background:rgba(255,255,255,.07)}
 .cls input{accent-color:var(--acc)}
+.cfind{display:flex;gap:6px;align-items:center;margin:8px 0 6px;flex:none}
+.cfind .chips{margin:0}
+.cfind input[type=text]{flex:1;min-width:0;padding:4px 10px;font-size:12px;border-radius:999px}
+.ctabs{display:flex;gap:6px;overflow-x:auto;flex:none;padding-bottom:6px;margin-bottom:2px;scrollbar-width:thin}
+.ctab{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);background:#000;color:#fff;border-radius:999px;padding:3px 11px;font-size:12px;cursor:pointer;white-space:nowrap;transition:.2s;font-family:inherit}
+.ctab:hover{background:#1a1a1a;border-color:rgba(255,255,255,.4)}
+.ctab.on{border-color:var(--acc);background:rgba(167,139,250,.2)}
+.ctab:focus-visible,.chip:focus-visible,.clink:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+.ctab .n{min-width:16px;padding:0 5px;border-radius:999px;background:var(--acc);color:#000;font-size:10px;font-weight:700;line-height:16px;text-align:center}
+.cpin{position:sticky;top:-4px;z-index:1;margin:-4px -4px 2px;padding:4px 12px;background:#12062a;border-bottom:1px solid var(--line);border-radius:8px 8px 0 0}
+.cpin .cls{padding-left:0;font-weight:600}
+.chead{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;font-size:11px;color:var(--muted)}
+.clink{background:none;border:0;padding:0;margin-left:10px;font:inherit;color:var(--acc2);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.clink:hover{color:#fff}
+.cempty{padding:14px 8px;font-size:12px;color:var(--muted);text-align:center}
 .ctl{flex:none;margin-top:12px}
 input[type=range]{width:100%;accent-color:var(--acc2);margin:2px 0}
 .row{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
@@ -133,7 +148,7 @@ footer{flex:none;padding:4px 24px 10px;font-size:11px;color:var(--muted)}
 .toast.ok{background:linear-gradient(90deg,#15803d,var(--ok))}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(220,195,255,.35);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
 svg{fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-@media(max-width:980px),(max-height:640px){
+@media(max-width:980px),(max-height:760px){
   body{height:auto;overflow:auto}
   main{grid-template-columns:1fr}
   #classList{min-height:150px;max-height:200px}
@@ -186,12 +201,16 @@ svg{fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
     <div class="card set">
       <div class="ch"><h2><span class="step">2</span>Configuration</h2></div>
-      <div class="lbl">Target Classes <span>Select at least 1</span></div>
-      <div class="chips">
-        <div class="chip" onclick="selAll(true)">All</div>
-        <div class="chip" onclick="selAll(false)">None</div>
-        <div class="chip" onclick="selCommon()">Common</div>
+      <div class="lbl">Target Classes <span id="selCount">Select at least 1</span></div>
+      <div class="cfind">
+        <input type="text" id="classSearch" placeholder="Search classes" autocomplete="off" aria-label="Search classes">
+        <div class="chips">
+          <div class="chip" role="button" tabindex="0" onclick="selAll(true)">All</div>
+          <div class="chip" role="button" tabindex="0" onclick="selAll(false)">None</div>
+          <div class="chip" role="button" tabindex="0" onclick="selCommon()">Common</div>
+        </div>
       </div>
+      <div class="ctabs" id="classTabs" role="tablist" aria-label="Class categories"></div>
       <div id="classList"></div>
 
       <div class="ctl">
@@ -327,18 +346,92 @@ function handleFile(file) {
   rd.readAsDataURL(file);
 }
 
+// ---------- target class picker ----------
+// "chosen" is the single source of truth for what is ticked, so selections
+// survive switching tabs and searching (the visible list is re-rendered each time).
+let classGroups = {pinned: [], categories: []};
+const chosen = new Set();
+let classTab = 'All';
+let classQuery = '';
+
+function esc(t) {
+  return String(t).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function byName(a, b) {
+  return a.toLowerCase().localeCompare(b.toLowerCase());
+}
+
+function allGroupedClasses() {
+  return [...classGroups.pinned, ...classGroups.categories.flatMap(c => c.classes)];
+}
+
+function visibleClasses() {
+  const q = classQuery.trim().toLowerCase();
+  const match = c => !q || c.toLowerCase().includes(q);
+  let list;
+  if (classTab === 'All') {
+    list = classGroups.categories.flatMap(c => c.classes).sort(byName);
+  } else {
+    const cat = classGroups.categories.find(c => c.name === classTab);
+    list = cat ? cat.classes : [];
+  }
+  return list.filter(match);
+}
+
+function classRow(c) {
+  return `<label class="cls"><input type="checkbox" name="classCheckbox" value="${esc(c)}" ${chosen.has(c) ? 'checked' : ''}><span>${esc(c)}</span></label>`;
+}
+
+function renderTabs() {
+  const tabs = [{name: 'All', classes: allGroupedClasses()}, ...classGroups.categories];
+  document.getElementById('classTabs').innerHTML = tabs.map(t => {
+    const n = t.classes.filter(c => chosen.has(c)).length;
+    const on = t.name === classTab;
+    return `<button type="button" class="ctab${on ? ' on' : ''}" role="tab" aria-selected="${on}" data-tab="${esc(t.name)}">${esc(t.name)}${n ? `<span class="n">${n}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function renderSelCount() {
+  const el = document.getElementById('selCount');
+  el.textContent = chosen.size ? `${chosen.size} selected` : 'Select at least 1';
+}
+
+function renderClassList() {
+  const q = classQuery.trim().toLowerCase();
+  const shown = visibleClasses();
+  const pinned = classGroups.pinned.filter(c => !q || c.toLowerCase().includes(q));
+  let html = '';
+  if (pinned.length) {
+    html += `<div class="cpin">${pinned.map(classRow).join('')}</div>`;
+  }
+  if (shown.length) {
+    html += `<div class="chead"><span>${shown.length} shown</span><span><button type="button" class="clink" data-act="pick">Select all</button><button type="button" class="clink" data-act="clear">Clear</button></span></div>`;
+    html += shown.map(classRow).join('');
+  } else if (!pinned.length) {
+    html += '<div class="cempty">No classes match your search.</div>';
+  }
+  document.getElementById('classList').innerHTML = html;
+}
+
+function renderClassPicker() {
+  renderTabs();
+  renderSelCount();
+  renderClassList();
+}
+
+function refreshCounts() {
+  renderTabs();
+  renderSelCount();
+}
+
 async function init() {
   try {
-    const r = await fetch('/api/classes');
+    const r = await fetch('/api/class-groups');
     if (!r.ok) throw new Error("Status failure");
-    const cls = await r.json();
-    const container = document.getElementById('classList');
-    container.innerHTML = cls.map(c => `
-      <label class="cls">
-        <input type="checkbox" name="classCheckbox" value="${c}" ${c==='person'?'checked':''}>
-        <span>${c}</span>
-      </label>
-    `).join('');
+    classGroups = await r.json();
+    if (!chosen.size && classGroups.pinned.includes('person')) chosen.add('person');
+    renderClassPicker();
     setOnline(true);
     refresh();
   } catch (err) {
@@ -346,6 +439,49 @@ async function init() {
     setTimeout(init, 3000);
   }
 }
+
+document.getElementById('classList').addEventListener('change', e => {
+  if (e.target.name !== 'classCheckbox') return;
+  if (e.target.checked) chosen.add(e.target.value); else chosen.delete(e.target.value);
+  refreshCounts();
+});
+
+document.getElementById('classList').addEventListener('click', e => {
+  const btn = e.target.closest('.clink');
+  if (!btn) return;
+  const shown = visibleClasses();
+  shown.forEach(c => btn.dataset.act === 'pick' ? chosen.add(c) : chosen.delete(c));
+  renderClassPicker();
+});
+
+const classTabsEl = document.getElementById('classTabs');
+classTabsEl.addEventListener('click', e => {
+  const btn = e.target.closest('.ctab');
+  if (!btn) return;
+  classTab = btn.dataset.tab;
+  renderClassPicker();
+  const active = classTabsEl.querySelector('.ctab.on');
+  if (active) active.scrollIntoView({inline: 'nearest', block: 'nearest'});
+});
+// let the mouse wheel scroll the tab strip sideways on desktop
+classTabsEl.addEventListener('wheel', e => {
+  if (classTabsEl.scrollWidth <= classTabsEl.clientWidth) return;
+  if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+  e.preventDefault();
+  classTabsEl.scrollLeft += e.deltaY;
+}, {passive: false});
+
+document.getElementById('classSearch').addEventListener('input', e => {
+  classQuery = e.target.value;
+  renderClassList();
+});
+
+// make the All / None / Common chips usable from the keyboard
+document.querySelectorAll('.cfind .chip').forEach(chip => {
+  chip.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); }
+  });
+});
 
 function setOnline(ok) {
   const dot = document.getElementById('dot');
@@ -360,13 +496,15 @@ function setOnline(ok) {
 }
 
 function selAll(val) {
-  document.querySelectorAll('input[name="classCheckbox"]').forEach(cb => cb.checked = val);
+  chosen.clear();
+  if (val) allGroupedClasses().forEach(c => chosen.add(c));
+  renderClassPicker();
 }
 
 function selCommon() {
-  document.querySelectorAll('input[name="classCheckbox"]').forEach(cb => {
-    cb.checked = commonClasses.includes(cb.value);
-  });
+  chosen.clear();
+  commonClasses.filter(c => allGroupedClasses().includes(c)).forEach(c => chosen.add(c));
+  renderClassPicker();
 }
 
 function setTab(t) {
@@ -467,8 +605,7 @@ async function runDetection() {
   spin.style.display = 'inline-block';
   dz.classList.add('scanning');
 
-  const selected = [];
-  document.querySelectorAll('input[name="classCheckbox"]:checked').forEach(cb => selected.push(cb.value));
+  const selected = [...chosen];
   if (selected.length === 0) {
     toast("Please select at least one class.", true);
     btn.disabled = false;
