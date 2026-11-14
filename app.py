@@ -30,6 +30,71 @@ _local_weights = os.path.join(BASE, MODEL_NAME)
 model = YOLO(_local_weights if os.path.exists(_local_weights) else MODEL_NAME)
 ALL_CLASSES = list(model.names.values())
 NAME_TO_ID = {v: k for k, v in model.names.items()}
+
+# ---------- target class categories (used only by the UI) ----------
+# Classes listed in PINNED_CLASSES are shown at the top of the class picker,
+# outside every category. Everything else is grouped by the table below.
+# A class the model has but that is missing from this table lands in "Other"
+# automatically, so adding a new model class never breaks the picker.
+PINNED_CLASSES = ["person"]
+CLASS_CATEGORIES = {
+    "Accessories": ["backpack", "handbag", "suitcase", "tie", "umbrella"],
+    "Animals": ["bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"],
+    "Food & Kitchen": ["apple", "banana", "bottle", "bowl", "broccoli", "cake",
+                       "carrot", "cup", "donut", "fork", "hot dog", "knife",
+                       "orange", "pizza", "sandwich", "spoon", "wine glass"],
+    "Household": ["bed", "cell phone", "chair", "couch", "dining table",
+                  "keyboard", "laptop", "microwave", "mouse", "oven",
+                  "potted plant", "refrigerator", "remote", "sink", "toaster",
+                  "toilet", "tv"],
+    "Sports": ["baseball bat", "baseball glove", "frisbee", "kite", "skateboard",
+               "skis", "snowboard", "sports ball", "surfboard", "tennis racket"],
+    "Street": ["bench", "fire hydrant", "parking meter", "stop sign",
+               "traffic light"],
+    "Vehicles": ["airplane", "bicycle", "boat", "bus", "car", "motorcycle",
+                 "train", "truck"],
+    "Other": ["book", "clock", "hair drier", "scissors", "teddy bear",
+              "toothbrush", "vase"],
+}
+
+
+def build_class_groups(names):
+    """Group the model's class names for the UI.
+
+    Returns {"pinned": [...], "categories": [{"name": ..., "classes": [...]}]}
+    with categories sorted A-Z ("Other" always last) and classes sorted A-Z
+    inside each category.
+    """
+    available = list(dict.fromkeys(names))
+    present = set(available)
+    pinned = [c for c in PINNED_CLASSES if c in present]
+    placed = set(pinned)
+
+    groups = {}
+    for category, members in CLASS_CATEGORIES.items():
+        found = [c for c in members if c in present and c not in placed]
+        placed.update(found)
+        if found:
+            groups[category] = found
+
+    leftovers = [c for c in available if c not in placed]
+    if leftovers:
+        groups["Other"] = groups.get("Other", []) + leftovers
+
+    order = sorted((c for c in groups if c != "Other"), key=str.lower)
+    if "Other" in groups:
+        order.append("Other")
+
+    return {
+        "pinned": pinned,
+        "categories": [
+            {"name": c, "classes": sorted(groups[c], key=str.lower)} for c in order
+        ],
+    }
+
+
+CLASS_GROUPS = build_class_groups(ALL_CLASSES)
 print(f"Model: {MODEL_NAME} | GPU: {HAS_GPU} | TTA: {USE_TTA} | face fallback: {FACE_FALLBACK}")
 print(f"Results are saved in: {LOG_DIR}")
 
@@ -96,7 +161,12 @@ def home():
 
 @app.get("/api/classes")
 def classes():
+    # flat list, kept as is: Render's health check uses this path
     return ALL_CLASSES
+
+@app.get("/api/class-groups")
+def class_groups():
+    return CLASS_GROUPS
 
 # ---------- counting ----------
 @app.post("/api/count")
