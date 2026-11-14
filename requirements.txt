@@ -2,7 +2,7 @@
 torch
 torchvision
 ultralytics
-opencv-python-headless
+opencv-python-headless<5
 numpy
 fastapi
 uvicorn
